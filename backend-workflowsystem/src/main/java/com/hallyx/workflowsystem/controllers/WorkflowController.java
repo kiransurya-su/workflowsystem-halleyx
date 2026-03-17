@@ -22,6 +22,9 @@ public class WorkflowController {
     @PostMapping
     public ResponseEntity<Workflow> createWorkflow(@RequestBody Workflow workflow) {
         setRelationships(workflow);
+        if (workflow.getStartStepId() == null && workflow.getSteps() != null && !workflow.getSteps().isEmpty()) {
+            workflow.setStartStepId(workflow.getSteps().get(0).getId());
+        }
         return ResponseEntity.ok(workflowService.createWorkflow(workflow));
     }
 
@@ -51,16 +54,21 @@ public class WorkflowController {
                     newVersion.setInputSchema(workflow.getInputSchema() != null ? workflow.getInputSchema() : existing.getInputSchema());
                     newVersion.setIsActive(workflow.getIsActive() != null ? workflow.getIsActive() : existing.getIsActive());
                     newVersion.setMaxIterations(workflow.getMaxIterations() != null ? workflow.getMaxIterations() : existing.getMaxIterations());
-                    newVersion.setStartStepId(workflow.getStartStepId() != null ? workflow.getStartStepId() : existing.getStartStepId());
                     newVersion.setVersion(existing.getVersion() + 1);
                     
-                    // Copy steps if they weren't provided in the request
-                    if (workflow.getSteps() == null || workflow.getSteps().isEmpty()) {
-                        // In a real scenario, we might want to clone steps here.
-                        // For now, let's at least ensure settings are kept.
-                    } else {
+                    // Copy steps if they were provided
+                    if (workflow.getSteps() != null && !workflow.getSteps().isEmpty()) {
                         newVersion.setSteps(workflow.getSteps());
                         setRelationships(newVersion);
+                    }
+                    
+                    // Set start step
+                    if (workflow.getStartStepId() != null) {
+                        newVersion.setStartStepId(workflow.getStartStepId());
+                    } else if (newVersion.getSteps() != null && !newVersion.getSteps().isEmpty()) {
+                        newVersion.setStartStepId(newVersion.getSteps().get(0).getId());
+                    } else {
+                        newVersion.setStartStepId(existing.getStartStepId());
                     }
                     
                     return ResponseEntity.ok(workflowService.createWorkflow(newVersion));
