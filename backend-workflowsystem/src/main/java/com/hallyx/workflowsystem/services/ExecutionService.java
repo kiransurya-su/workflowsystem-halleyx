@@ -111,8 +111,24 @@ public class ExecutionService {
         
         logEntry.setEvaluatedRules("true");
         if (matchedRule.isPresent()) {
-            UUID nextStepId = matchedRule.get().getNextStepId();
-            logEntry.setSelectedNextStep(nextStepId != null ? nextStepId.toString() : "END");
+            String nextStepRef = matchedRule.get().getNextStepId();
+            UUID nextStepId = null;
+            
+            if (nextStepRef != null && !nextStepRef.trim().isEmpty()) {
+                try {
+                    nextStepId = UUID.fromString(nextStepRef);
+                } catch (IllegalArgumentException e) {
+                    // Not a UUID, try to find step by name in the same workflow
+                    final String nameToFind = nextStepRef;
+                    nextStepId = execution.getWorkflow().getSteps().stream()
+                            .filter(s -> s.getName().equalsIgnoreCase(nameToFind))
+                            .map(Step::getId)
+                            .findFirst()
+                            .orElse(null);
+                }
+            }
+            
+            logEntry.setSelectedNextStep(nextStepId != null ? nextStepId.toString() : (nextStepRef != null ? nextStepRef : "END"));
             execution.setCurrentStepId(nextStepId);
         } else {
             logEntry.setSelectedNextStep("END");

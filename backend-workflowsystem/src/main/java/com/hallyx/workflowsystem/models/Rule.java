@@ -28,7 +28,7 @@ public class Rule {
     private String condition;
 
     @Column(name = "next_step_id")
-    private UUID nextStepId;
+    private String nextStepId;
 
     private Integer priority = 0;
 
