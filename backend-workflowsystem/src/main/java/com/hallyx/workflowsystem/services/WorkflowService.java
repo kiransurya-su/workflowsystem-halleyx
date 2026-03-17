@@ -21,9 +21,16 @@ public class WorkflowService {
     private final WorkflowRepository workflowRepository;
     private final StepRepository stepRepository;
 
+    @Transactional
     public Workflow createWorkflow(Workflow workflow) {
-        return workflowRepository.save(workflow);
+        Workflow saved = workflowRepository.save(workflow);
+        if (saved.getStartStepId() == null && saved.getSteps() != null && !saved.getSteps().isEmpty()) {
+            saved.setStartStepId(saved.getSteps().get(0).getId());
+            return workflowRepository.save(saved);
+        }
+        return saved;
     }
+Line 22:
 
     public List<Workflow> getAllWorkflows() {
         return workflowRepository.findAll();

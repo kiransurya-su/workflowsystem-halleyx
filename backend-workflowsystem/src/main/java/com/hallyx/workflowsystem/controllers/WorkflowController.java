@@ -22,14 +22,6 @@ public class WorkflowController {
     @PostMapping
     public ResponseEntity<Workflow> createWorkflow(@RequestBody Workflow workflow) {
         setRelationships(workflow);
-        // Ensure startStepId is set to the first step if missing
-        if (workflow.getStartStepId() == null && workflow.getSteps() != null && !workflow.getSteps().isEmpty()) {
-            // If the step has an ID (e.g. from frontend or generated), use it.
-            // But since it's a new save, IDs are generated at persistence.
-            // We'll rely on a post-save update if needed, but usually, 
-            // if the frontend doesn't provide it, the first step is a good default.
-            workflow.setStartStepId(null); // Will be set after save or manually in UI
-        }
         return ResponseEntity.ok(workflowService.createWorkflow(workflow));
     }
 
