@@ -60,8 +60,9 @@ public class WorkflowController {
                     if (workflow.getStartStepId() != null) {
                         newVersion.setStartStepId(workflow.getStartStepId());
                     } else if (newVersion.getSteps() != null && !newVersion.getSteps().isEmpty()) {
-                        // Keep start step from existing if possible, or leave null for manual set
-                        newVersion.setStartStepId(existing.getStartStepId());
+                        // Fallback to existing or auto-assign first step
+                        newVersion.setStartStepId(existing.getStartStepId() != null ? 
+                            existing.getStartStepId() : newVersion.getSteps().get(0).getId());
                     }
                     
                     return ResponseEntity.ok(workflowService.createWorkflow(newVersion));
