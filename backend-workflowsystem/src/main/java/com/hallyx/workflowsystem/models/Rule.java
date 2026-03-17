@@ -17,8 +17,19 @@ import java.util.UUID;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "nextStepId"})
 public class Rule {
+    
+    // Compatibility setter for old frontend versions
+    @JsonProperty("nextStepId")
+    public void setNextStepId(String value) {
+        this.nextStepReference = value;
+    }
+
+    @JsonProperty("nextStepId")
+    public String getNextStepId() {
+        return this.nextStepReference;
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
