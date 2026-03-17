@@ -111,14 +111,13 @@ public class ExecutionService {
         
         logEntry.setEvaluatedRules("true");
         if (matchedRule.isPresent()) {
-            String nextStepRef = matchedRule.get().getNextStepId();
+            String nextStepRef = matchedRule.get().getNextStepReference();
             UUID nextStepId = null;
             
             if (nextStepRef != null && !nextStepRef.trim().isEmpty()) {
                 try {
                     nextStepId = UUID.fromString(nextStepRef);
                 } catch (IllegalArgumentException e) {
-                    // Not a UUID, try to find step by name in the same workflow
                     final String nameToFind = nextStepRef;
                     nextStepId = execution.getWorkflow().getSteps().stream()
                             .filter(s -> s.getName().equalsIgnoreCase(nameToFind))

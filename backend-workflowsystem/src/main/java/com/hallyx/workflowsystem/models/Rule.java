@@ -27,8 +27,8 @@ public class Rule {
     @Column(name = "rule_condition")
     private String condition;
 
-    @Column(name = "next_step_id")
-    private String nextStepId;
+    @Column(name = "next_step_reference")
+    private String nextStepReference;
 
     private Integer priority = 0;
 

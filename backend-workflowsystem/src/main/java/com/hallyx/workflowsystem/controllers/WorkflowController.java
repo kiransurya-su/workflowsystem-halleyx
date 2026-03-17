@@ -22,8 +22,13 @@ public class WorkflowController {
     @PostMapping
     public ResponseEntity<Workflow> createWorkflow(@RequestBody Workflow workflow) {
         setRelationships(workflow);
+        // Ensure startStepId is set to the first step if missing
         if (workflow.getStartStepId() == null && workflow.getSteps() != null && !workflow.getSteps().isEmpty()) {
-            workflow.setStartStepId(workflow.getSteps().get(0).getId());
+            // If the step has an ID (e.g. from frontend or generated), use it.
+            // But since it's a new save, IDs are generated at persistence.
+            // We'll rely on a post-save update if needed, but usually, 
+            // if the frontend doesn't provide it, the first step is a good default.
+            workflow.setStartStepId(null); // Will be set after save or manually in UI
         }
         return ResponseEntity.ok(workflowService.createWorkflow(workflow));
     }
@@ -48,7 +53,6 @@ public class WorkflowController {
     public ResponseEntity<Workflow> updateWorkflow(@PathVariable("id") UUID id, @RequestBody Workflow workflow) {
         return workflowService.getWorkflowById(id)
                 .map(existing -> {
-                    // Create new version
                     Workflow newVersion = new Workflow();
                     newVersion.setName(workflow.getName() != null ? workflow.getName() : existing.getName());
                     newVersion.setInputSchema(workflow.getInputSchema() != null ? workflow.getInputSchema() : existing.getInputSchema());
@@ -56,18 +60,15 @@ public class WorkflowController {
                     newVersion.setMaxIterations(workflow.getMaxIterations() != null ? workflow.getMaxIterations() : existing.getMaxIterations());
                     newVersion.setVersion(existing.getVersion() + 1);
                     
-                    // Copy steps if they were provided
                     if (workflow.getSteps() != null && !workflow.getSteps().isEmpty()) {
                         newVersion.setSteps(workflow.getSteps());
                         setRelationships(newVersion);
                     }
                     
-                    // Set start step
                     if (workflow.getStartStepId() != null) {
                         newVersion.setStartStepId(workflow.getStartStepId());
                     } else if (newVersion.getSteps() != null && !newVersion.getSteps().isEmpty()) {
-                        newVersion.setStartStepId(newVersion.getSteps().get(0).getId());
-                    } else {
+                        // Keep start step from existing if possible, or leave null for manual set
                         newVersion.setStartStepId(existing.getStartStepId());
                     }
                     

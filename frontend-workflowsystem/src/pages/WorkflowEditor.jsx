@@ -55,9 +55,10 @@ const WorkflowEditor = () => {
   const addStep = () => {
     const newStep = {
       name: 'New Step',
-      type: 'TASK',
+      stepType: 'TASK',
       order: workflow.steps.length + 1,
-      metadata: '{}'
+      metadata: '{}',
+      rules: []
     };
     setWorkflow({ ...workflow, steps: [...workflow.steps, newStep] });
   };
@@ -294,11 +295,11 @@ const WorkflowEditor = () => {
                           <input 
                             style={{ flex: 1.5, padding: '8px 12px', fontSize: '0.85rem', color: 'var(--accent)', fontWeight: 600 }}
                             placeholder="Next Step ID"
-                            value={rule.nextStepId || ''}
+                            value={rule.nextStepReference || ''}
                             onChange={(e) => {
                               const newSteps = [...workflow.steps];
                               const foundRule = newSteps[idx].rules.find(r => r.priority === rule.priority);
-                              if (foundRule) foundRule.nextStepId = e.target.value;
+                              if (foundRule) foundRule.nextStepReference = e.target.value;
                               setWorkflow({...workflow, steps: newSteps});
                             }}
                           />
