@@ -6,7 +6,7 @@ A high-performance, premium workflow execution engine designed for complex enter
 
 [![HalleyX Demo Video](./assets/demo/video_thumbnail.png)](https://drive.google.com/file/d/135h7HirmlD2uyzAeHy9XmlDCcf4U3gln/view?usp=sharing)
 
-*Click the image above to play the demo video.*
+*Click the image above to play the demo video or [view it directly on Google Drive](https://drive.google.com/file/d/135h7HirmlD2uyzAeHy9XmlDCcf4U3gln/view?usp=sharing).*
 
 
 ## 🚀 Quick Start
