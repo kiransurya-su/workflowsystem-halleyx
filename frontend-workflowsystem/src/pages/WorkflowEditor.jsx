@@ -1,7 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Save, ArrowLeft, Plus, Trash2, Settings, List, Codesandbox, AlertCircle, ChevronUp, ChevronDown } from 'lucide-react';
+import { Save, ArrowLeft, Plus, Trash2, Settings, List, Codesandbox, AlertCircle, ChevronUp, ChevronDown, Database } from 'lucide-react';
 import { workflowService } from '../services/api';
+
+// ── Helpers ────────────────────────────────────────────────────────────────────
+const paramsToSchema = (params) => JSON.stringify(params, null, 2);
+
+const schemaToParams = (schema) => {
+  try {
+    const raw = typeof schema === 'string' ? JSON.parse(schema) : schema;
+    if (Array.isArray(raw)) return raw;
+  } catch (_) {}
+  return [];
+};
 
 const WorkflowEditor = () => {
   const { id } = useParams();
@@ -12,9 +23,14 @@ const WorkflowEditor = () => {
     name: '',
     isActive: true,
     maxIterations: 100,
-    inputSchema: '{}',
+    inputSchema: '[]',
     steps: []
   });
+
+  // ── Input Parameters Designer state ──────────────────────────────────────────
+  const [inputMode, setInputMode] = useState('designer'); // 'designer' | 'raw'
+  const [inputParams, setInputParams] = useState([]);    // [{name, type, options, required}]
+  const [draftParam, setDraftParam] = useState({ name: '', type: 'string', options: '', required: false });
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
@@ -30,12 +46,38 @@ const WorkflowEditor = () => {
     try {
       const data = await workflowService.get(id);
       setWorkflow(data);
+      setInputParams(schemaToParams(data.inputSchema));
     } catch (err) {
       setError('Failed to load workflow.');
       console.error(err);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Keep inputSchema in sync with the designer params
+  const syncParams = (params) => {
+    setInputParams(params);
+    setWorkflow((prev) => ({ ...prev, inputSchema: paramsToSchema(params) }));
+  };
+
+  const addParam = () => {
+    const trimmedName = draftParam.name.trim();
+    if (!trimmedName) return;
+    if (inputParams.find((p) => p.name === trimmedName)) return; // duplicate guard
+    const optionsArr = draftParam.options
+      ? draftParam.options.split('|').map((s) => s.trim()).filter(Boolean)
+      : [];
+    const newParams = [
+      ...inputParams,
+      { name: trimmedName, type: draftParam.type, options: optionsArr, required: draftParam.required }
+    ];
+    syncParams(newParams);
+    setDraftParam({ name: '', type: 'string', options: '', required: false });
+  };
+
+  const removeParam = (name) => {
+    syncParams(inputParams.filter((p) => p.name !== name));
   };
 
   const handleSave = async () => {
@@ -328,29 +370,213 @@ const WorkflowEditor = () => {
           </section>
         </div>
 
-        {/* Sidebar: Schema */}
+        {/* Sidebar: Input Parameters Designer */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '32px', width: '100%', minWidth: 0 }}>
-          <section className="glass-card" style={{ padding: '32px', width: '100%', maxWidth: '380px', justifySelf: 'end' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px' }}>
-              <Codesandbox size={22} color="var(--accent)" />
-              <h3 className="outfit" style={{ fontSize: '1.4rem' }}>Validation</h3>
+          <section className="glass-card" style={{ padding: '28px', width: '100%', maxWidth: '380px', justifySelf: 'end' }}>
+
+            {/* Header */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
+              <Database size={20} color="var(--primary)" />
+              <h3 className="outfit" style={{ fontSize: '1.1rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>
+                Input Parameters
+              </h3>
             </div>
-            <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '20px', lineHeight: '1.6' }}>
-              Define the incoming JSON schema to validate data before execution starts.
-            </p>
-            <textarea 
-              className="code-block"
-              value={workflow.inputSchema}
-              onChange={(e) => setWorkflow({...workflow, inputSchema: e.target.value})}
-              style={{ width: '100%', height: '400px', fontSize: '0.85rem', padding: '20px', borderRadius: '12px' }}
-              placeholder='{ "type": "object", ... }'
-            />
+
+            {/* Mode Tabs */}
+            <div style={{ display: 'flex', gap: '0', marginBottom: '20px', background: 'var(--glass-bright)', borderRadius: '8px', padding: '3px', border: '1px solid var(--glass-border)' }}>
+              {['designer', 'raw'].map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setInputMode(mode)}
+                  style={{
+                    flex: 1,
+                    padding: '7px 0',
+                    fontSize: '0.8rem',
+                    fontWeight: 600,
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    textTransform: 'capitalize',
+                    background: inputMode === mode ? 'var(--primary)' : 'transparent',
+                    color: inputMode === mode ? 'white' : 'var(--text-muted)',
+                    transition: 'var(--transition)',
+                  }}
+                >
+                  {mode === 'designer' ? 'Designer' : 'Raw JSON'}
+                </button>
+              ))}
+            </div>
+
+            {/* ── DESIGNER MODE ── */}
+            {inputMode === 'designer' && (
+              <>
+                {/* Existing params list */}
+                {inputParams.length === 0 ? (
+                  <div style={{
+                    textAlign: 'center',
+                    padding: '24px 12px',
+                    border: '1px dashed var(--glass-border)',
+                    borderRadius: '10px',
+                    color: 'var(--text-muted)',
+                    fontSize: '0.82rem',
+                    marginBottom: '20px',
+                    lineHeight: '1.6'
+                  }}>
+                    No input parameters defined yet. Add your first field below.
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '20px' }}>
+                    {inputParams.map((p) => (
+                      <div key={p.name} style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '10px 12px',
+                        background: 'var(--glass-bright)',
+                        border: '1px solid var(--glass-border)',
+                        borderRadius: '8px'
+                      }}>
+                        <div style={{ flex: 1 }}>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{p.name}</span>
+                          <span style={{
+                            marginLeft: '8px',
+                            fontSize: '0.65rem',
+                            padding: '2px 7px',
+                            borderRadius: '20px',
+                            background: 'rgba(99,102,241,0.12)',
+                            color: 'var(--primary)',
+                            fontWeight: 700,
+                            textTransform: 'uppercase'
+                          }}>{p.type}</span>
+                          {p.required && (
+                            <span style={{ marginLeft: '6px', fontSize: '0.65rem', color: 'var(--danger)', fontWeight: 700 }}>REQUIRED</span>
+                          )}
+                          {p.options.length > 0 && (
+                            <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '3px' }}>
+                              Options: {p.options.join(' | ')}
+                            </div>
+                          )}
+                        </div>
+                        <button
+                          onClick={() => removeParam(p.name)}
+                          className="action-btn delete"
+                          style={{ width: '28px', height: '28px', flexShrink: 0 }}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* Add New Parameter Form */}
+                <div style={{
+                  background: 'var(--glass-bright)',
+                  border: '1px solid var(--glass-border)',
+                  borderRadius: '10px',
+                  padding: '16px',
+                }}>
+                  <div style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '12px' }}>
+                    Add New Parameter
+                  </div>
+
+                  {/* Column headers */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 72px 1fr', gap: '8px', marginBottom: '6px' }}>
+                    {['Field Name', 'Data Type', 'Options (pipe separated)'].map((h) => (
+                      <span key={h} style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 600 }}>{h}</span>
+                    ))}
+                  </div>
+
+                  {/* Inputs row */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 72px 1fr', gap: '8px', marginBottom: '10px' }}>
+                    <input
+                      type="text"
+                      placeholder="e.g. amount"
+                      value={draftParam.name}
+                      onChange={(e) => setDraftParam({ ...draftParam, name: e.target.value })}
+                      onKeyDown={(e) => e.key === 'Enter' && addParam()}
+                      style={{ padding: '8px 10px', fontSize: '0.82rem', borderRadius: '7px' }}
+                    />
+                    <select
+                      value={draftParam.type}
+                      onChange={(e) => setDraftParam({ ...draftParam, type: e.target.value })}
+                      style={{
+                        padding: '8px 6px',
+                        fontSize: '0.82rem',
+                        borderRadius: '7px',
+                        background: 'var(--surface-hover)',
+                        border: '1px solid var(--glass-border)',
+                        color: 'var(--text-primary)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <option value="string">String</option>
+                      <option value="number">Number</option>
+                      <option value="boolean">Boolean</option>
+                    </select>
+                    <input
+                      type="text"
+                      placeholder="Option1|Option2"
+                      value={draftParam.options}
+                      onChange={(e) => setDraftParam({ ...draftParam, options: e.target.value })}
+                      style={{ padding: '8px 10px', fontSize: '0.82rem', borderRadius: '7px' }}
+                    />
+                  </div>
+
+                  {/* Add button + mandatory checkbox */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+                      <input
+                        type="checkbox"
+                        checked={draftParam.required}
+                        onChange={(e) => setDraftParam({ ...draftParam, required: e.target.checked })}
+                        style={{ accentColor: 'var(--primary)', width: '14px', height: '14px' }}
+                      />
+                      Mark as mandatory field
+                    </label>
+                    <button
+                      onClick={addParam}
+                      disabled={!draftParam.name.trim()}
+                      style={{
+                        padding: '8px 20px',
+                        background: draftParam.name.trim() ? 'var(--primary)' : 'var(--glass-bright)',
+                        color: draftParam.name.trim() ? 'white' : 'var(--text-muted)',
+                        border: '1px solid var(--glass-border)',
+                        borderRadius: '7px',
+                        fontSize: '0.85rem',
+                        fontWeight: 700,
+                        cursor: draftParam.name.trim() ? 'pointer' : 'not-allowed',
+                        transition: 'var(--transition)'
+                      }}
+                    >
+                      Add
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* ── RAW JSON MODE ── */}
+            {inputMode === 'raw' && (
+              <textarea
+                className="code-block"
+                value={workflow.inputSchema}
+                onChange={(e) => {
+                  setWorkflow((prev) => ({ ...prev, inputSchema: e.target.value }));
+                  const parsed = schemaToParams(e.target.value);
+                  if (parsed.length > 0) setInputParams(parsed);
+                }}
+                style={{ width: '100%', height: '340px', fontSize: '0.82rem', padding: '16px', borderRadius: '10px' }}
+                placeholder='[{"name":"amount","type":"number","options":[],"required":true}]'
+              />
+            )}
+
             {error && (
-              <div style={{ 
-                marginTop: '16px', 
-                padding: '12px', 
-                background: 'rgba(239, 68, 68, 0.1)', 
-                color: 'var(--danger)', 
+              <div style={{
+                marginTop: '16px',
+                padding: '12px',
+                background: 'rgba(239, 68, 68, 0.1)',
+                color: 'var(--danger)',
                 borderRadius: '8px',
                 fontSize: '0.85rem',
                 border: '1px solid rgba(239, 68, 68, 0.2)',
