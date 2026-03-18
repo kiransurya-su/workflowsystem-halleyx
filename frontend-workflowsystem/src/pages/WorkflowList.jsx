@@ -14,6 +14,7 @@ const WorkflowList = () => {
 
   useEffect(() => {
     fetchWorkflows();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, search]);
 
   const fetchWorkflows = async () => {
@@ -38,6 +39,7 @@ const WorkflowList = () => {
         fetchWorkflows();
       } catch (err) {
         alert('Failed to delete workflow');
+        console.error(err);
       }
     }
   };

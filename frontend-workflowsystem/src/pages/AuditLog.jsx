@@ -12,6 +12,7 @@ const AuditLog = () => {
 
   useEffect(() => {
     fetchExecutions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
   const fetchExecutions = async () => {
@@ -120,7 +121,7 @@ const AuditLog = () => {
                           fontSize: '0.7rem',
                           padding: '4px 8px',
                           borderRadius: '6px',
-                          background: `rgba(255,255,255,0.03)`,
+                          background: `var(--surface-item)`,
                           border: `1px solid ${getStatusColor(exe.status)}33`
                         }}>
                           {exe.status?.toUpperCase() || 'UNKNOWN'}

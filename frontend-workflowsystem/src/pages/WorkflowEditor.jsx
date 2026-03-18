@@ -23,7 +23,8 @@ const WorkflowEditor = () => {
     if (!isNew) {
       fetchWorkflow();
     }
-  }, [id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, isNew]);
 
   const fetchWorkflow = async () => {
     try {
@@ -31,6 +32,7 @@ const WorkflowEditor = () => {
       setWorkflow(data);
     } catch (err) {
       setError('Failed to load workflow.');
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -47,6 +49,7 @@ const WorkflowEditor = () => {
       navigate('/');
     } catch (err) {
       setError('Failed to save workflow.');
+      console.error(err);
     } finally {
       setSaving(false);
     }
@@ -170,10 +173,6 @@ const WorkflowEditor = () => {
                       borderRadius: '10px', 
                       display: 'flex', 
                       alignItems: 'center', 
-                      justifyChild: 'center',
-                      fontSize: '0.9rem', 
-                      fontWeight: 800,
-                      boxShadow: '0 0 15px var(--primary-glow)',
                       justifyContent: 'center'
                     }}>
                       {idx + 1}
@@ -210,10 +209,11 @@ const WorkflowEditor = () => {
                         background: 'var(--surface-hover)', 
                         border: '1px solid var(--glass-border)',
                         color: 'white',
-                        padding: '8px 12px',
+                        padding: '8px 16px',
                         borderRadius: '8px',
                         fontSize: '0.85rem',
-                        fontWeight: 600
+                        fontWeight: 600,
+                        cursor: 'pointer'
                       }}
                     >
                       <option value="TASK">⚡ TASK</option>
@@ -229,7 +229,7 @@ const WorkflowEditor = () => {
                   </div>
                   
                   {/* Rules Component */}
-                  <div style={{ background: 'rgba(0,0,0,0.2)', padding: '20px', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.02)' }}>
+                  <div style={{ background: 'var(--surface-sub)', padding: '20px', borderRadius: '12px', border: '1px solid var(--glass-border)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                       <h4 className="outfit" style={{ fontSize: '0.8rem', color: 'var(--text-muted)', letterSpacing: '0.1em' }}>DECISION RULES</h4>
                       <button onClick={() => {
@@ -245,7 +245,7 @@ const WorkflowEditor = () => {
                     
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       {(step.rules || []).sort((a,b) => a.priority - b.priority).map((rule, rIdx) => (
-                        <div key={rIdx} style={{ display: 'flex', gap: '12px', alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '8px', borderRadius: '8px' }}>
+                        <div key={rIdx} style={{ display: 'flex', gap: '12px', alignItems: 'center', background: 'var(--surface-item)', padding: '8px', borderRadius: '8px' }}>
                           <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                             <button 
                               onClick={() => {
@@ -280,7 +280,7 @@ const WorkflowEditor = () => {
                               <ChevronDown size={12} />
                             </button>
                           </div>
-                          <div style={{ fontSize: '0.7rem', color: 'var(--primary)', fontWeight: 800, minWidth: '30px' }}>P{rule.priority}</div>
+                          <div className="priority-badge">P{rule.priority}</div>
                           <input 
                             style={{ flex: 3, padding: '8px 12px', fontSize: '0.85rem' }}
                             placeholder="Condition (e.g. amount > 500)"
@@ -309,7 +309,7 @@ const WorkflowEditor = () => {
                              // Re-normalize priorities
                              newSteps[idx].rules.sort((a,b) => a.priority - b.priority).forEach((r, i) => r.priority = i + 1);
                              setWorkflow({...workflow, steps: newSteps});
-                          }} className="action-btn delete" style={{ padding: '6px' }}>
+                          }} className="action-btn delete" style={{ width: '32px', height: '32px' }}>
                             <Trash2 size={14} />
                           </button>
                         </div>

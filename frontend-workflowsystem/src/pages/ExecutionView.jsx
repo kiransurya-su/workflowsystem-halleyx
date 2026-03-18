@@ -10,13 +10,14 @@ const ExecutionView = () => {
   const [logs, setLogs] = useState([]);
   const [workflow, setWorkflow] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [executing, setExecuting] = useState(false);
-  const [error, setError] = useState(null);
+  const [, setExecuting] = useState(false);
+  const [, setError] = useState(null);
 
   useEffect(() => {
     fetchExecution();
     const interval = setInterval(fetchExecution, 5000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   const fetchExecution = async () => {
@@ -32,6 +33,7 @@ const ExecutionView = () => {
       }
     } catch (err) {
       setError('Failed to load execution details.');
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -43,8 +45,7 @@ const ExecutionView = () => {
       const currentLog = logs.find(l => l.status === 'awaiting_approval');
       if (!currentLog) return;
       
-      const step = workflow?.steps.find(s => s.name === currentLog.stepName);
-      const stepId = step ? step.id : currentLog.stepId;
+      const stepId = currentLog.stepId;
       
       await workflowService.submitAction(id, stepId, decision);
       fetchExecution();
@@ -118,7 +119,7 @@ const ExecutionView = () => {
                     {getStatusIcon(log.status)}
                   </div>
                   
-                  <div className="glass-card" style={{ padding: '20px', background: 'rgba(255,255,255,0.02)' }}>
+                  <div className="glass-card" style={{ padding: '20px', background: 'var(--surface-item)' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                       <h4 className="outfit" style={{ fontWeight: 700 }}>{log.stepName}</h4>
                       <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(log.startedAt).toLocaleTimeString()}</span>

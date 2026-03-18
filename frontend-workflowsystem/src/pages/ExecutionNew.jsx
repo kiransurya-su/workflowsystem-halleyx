@@ -21,6 +21,7 @@ const ExecutionNew = () => {
       return;
     }
     fetchWorkflow();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workflowId]);
 
   const fetchWorkflow = async () => {
@@ -29,6 +30,7 @@ const ExecutionNew = () => {
       setWorkflow(data);
     } catch (err) {
       setError('Failed to load workflow details.');
+      console.error(err);
     } finally {
       setLoading(false);
     }

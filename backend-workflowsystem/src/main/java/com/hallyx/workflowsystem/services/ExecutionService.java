@@ -80,6 +80,7 @@ public class ExecutionService {
         ExecutionLog logEntry = new ExecutionLog();
         logEntry.setExecution(execution);
         logEntry.setStepName(currentStep.getName());
+        logEntry.setStepId(currentStep.getId());
         logEntry.setStepType(currentStep.getType().toString());
         logEntry.setStartedAt(LocalDateTime.now());
 
@@ -190,7 +191,7 @@ public class ExecutionService {
         metrics.put("activeWorkflows", workflowRepository.count());
         metrics.put("completed", executionRepository.countByStatus("COMPLETED"));
         metrics.put("failed", executionRepository.countByStatus("FAILED"));
-        metrics.put("in_progress", executionRepository.countByStatus("IN_PROGRESS"));
+        metrics.put("in_progress", executionRepository.countByStatus("IN_PROGRESS") + executionRepository.countByStatus("AWAITING_APPROVAL"));
         return metrics;
     }
 

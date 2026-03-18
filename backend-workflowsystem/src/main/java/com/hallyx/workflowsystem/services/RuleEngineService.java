@@ -3,6 +3,7 @@ package com.hallyx.workflowsystem.services;
 import org.springframework.expression.Expression;
 import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
+import org.springframework.context.expression.MapAccessor;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
 import org.springframework.stereotype.Service;
 
@@ -33,7 +34,9 @@ public class RuleEngineService {
             return true;
         }
 
-        StandardEvaluationContext context = new StandardEvaluationContext();
+        StandardEvaluationContext context = new StandardEvaluationContext(data);
+        context.addPropertyAccessor(new MapAccessor());
+        
         if (data != null) {
             data.forEach(context::setVariable);
         }

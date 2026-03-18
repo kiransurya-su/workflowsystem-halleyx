@@ -29,6 +29,9 @@ public class ExecutionLog {
     @Column(name = "step_name")
     private String stepName;
 
+    @Column(name = "step_id")
+    private UUID stepId;
+
     @Column(name = "step_type")
     private String stepType;
 
