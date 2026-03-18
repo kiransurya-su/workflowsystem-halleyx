@@ -1,16 +1,34 @@
 const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8080/api';
 
+/**
+ * Centrally handles API responses and converts errors into human-readable messages.
+ * Enhanced to extract backend error codes for specific UI feedback.
+ */
 const handleResponse = async (response) => {
   if (!response.ok) {
-    const error = await response.json().catch(() => ({ message: 'API Request Failed' }));
-    throw new Error(error.message || 'API Request Failed');
+    let errorMessage = 'An unexpected connection error occurred';
+    let errorCode = 'NETWORK_ERROR';
+
+    try {
+      const errorData = await response.json();
+      errorMessage = errorData.message || errorMessage;
+      errorCode = errorData.errorCode || errorCode;
+    } catch (e) {
+      // Fallback for non-JSON error responses
+    }
+    
+    const error = new Error(errorMessage);
+    error.code = errorCode;
+    error.status = response.status;
+    throw error;
   }
+  
   if (response.status === 204) return null;
   return response.json();
 };
 
 export const workflowService = {
-  // Workflows
+  // --- Workflow Management ---
   list: (page = 0, size = 10, search = '') => 
     fetch(`${API_BASE}/workflows?page=${page}&size=${size}&search=${search}`).then(handleResponse),
   
@@ -34,7 +52,7 @@ export const workflowService = {
   delete: (id) => 
     fetch(`${API_BASE}/workflows/${id}`, { method: 'DELETE' }).then(handleResponse),
 
-  // Steps
+  // --- Step Configuration ---
   getSteps: (workflowId) => 
     fetch(`${API_BASE}/workflows/${workflowId}/steps`).then(handleResponse),
   
@@ -45,7 +63,7 @@ export const workflowService = {
       body: JSON.stringify(step)
     }).then(handleResponse),
 
-  // Rules
+  // --- Rule Definition ---
   addRule: (stepId, rule) => 
     fetch(`${API_BASE}/steps/${stepId}/rules`, {
       method: 'POST',
@@ -53,7 +71,7 @@ export const workflowService = {
       body: JSON.stringify(rule)
     }).then(handleResponse),
 
-  // Executions
+  // --- Execution & Runtime ---
   execute: (workflowId, data) => 
     fetch(`${API_BASE}/workflows/${workflowId}/execute`, {
       method: 'POST',

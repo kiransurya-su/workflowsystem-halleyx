@@ -14,6 +14,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Defines a structural sequence of steps and rules to automate a business process.
+ * Workflows are versioned and can contain multiple steps.
+ */
 @Entity
 @Table(name = "workflows")
 @Data
@@ -22,6 +26,9 @@ import java.util.UUID;
 @JsonIgnoreProperties(value = {"hibernateLazyInitializer", "handler"}, ignoreUnknown = true)
 public class Workflow {
 
+    /**
+     * Unique identifier for the workflow.
+     */
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;

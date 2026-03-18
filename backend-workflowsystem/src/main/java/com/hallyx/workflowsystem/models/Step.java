@@ -16,6 +16,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
+/**
+ * Represents a single logical unit of work within a Workflow.
+ * Steps can be of various types (e.g., TASK, APPROVAL, CONDITION) and are 
+ * connected via Rules to form a functional pipeline.
+ */
 @Entity
 @Table(name = "steps")
 @Data
@@ -24,6 +29,9 @@ import java.util.UUID;
 @JsonIgnoreProperties(value = {"hibernateLazyInitializer", "handler"}, ignoreUnknown = true)
 public class Step {
 
+    /**
+     * Unique identifier for the step.
+     */
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;

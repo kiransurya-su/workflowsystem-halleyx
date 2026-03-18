@@ -1,43 +1,53 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Activity, Clock, CheckCircle, XCircle, Play, AlertCircle, ArrowLeft, User, MessageCircle, ChevronRight, RefreshCw } from 'lucide-react';
+import { Activity, Clock, CheckCircle, XCircle, ArrowLeft, RefreshCw } from 'lucide-react';
 import { workflowService } from '../services/api';
+import './ExecutionView.css';
 
+/**
+ * Sub-component for rendering status icons based on step state.
+ */
+const StatusIcon = ({ status }) => {
+  switch(status?.toLowerCase()) {
+    case 'completed': return <CheckCircle size={20} color="#10b981" />;
+    case 'failed': return <XCircle size={20} color="#ef4444" />;
+    case 'awaiting_approval': return <Clock size={20} color="#f59e0b" />;
+    case 'in_progress': return <Activity className="spin-slow" size={20} color="#3b82f6" />;
+    default: return <Clock size={20} color="var(--text-muted)" />;
+  }
+};
+
+/**
+ * Main View for tracking and interacting with a specific workflow execution.
+ * Provides a real-time timeline of steps and data context.
+ */
 const ExecutionView = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const [execution, setExecution] = useState(null);
   const [logs, setLogs] = useState([]);
-  const [workflow, setWorkflow] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [, setExecuting] = useState(false);
-  const [, setError] = useState(null);
+  const [executing, setExecuting] = useState(false);
 
-  useEffect(() => {
-    fetchExecution();
-    const interval = setInterval(fetchExecution, 5000);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
-
-  const fetchExecution = async () => {
+  const fetchExecution = useCallback(async () => {
     try {
       const exeData = await workflowService.getExecution(id);
       setExecution(exeData);
       
       const logsData = await workflowService.getExecutionLogs(id);
       setLogs(logsData || []);
-
-      if (exeData.workflow && !workflow) {
-        setWorkflow(exeData.workflow);
-      }
     } catch (err) {
-      setError('Failed to load execution details.');
-      console.error(err);
+      console.error('Failed to load execution details:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchExecution();
+    const interval = setInterval(fetchExecution, 5000);
+    return () => clearInterval(interval);
+  }, [fetchExecution]);
 
   const handleAction = async (decision) => {
     try {
@@ -45,42 +55,28 @@ const ExecutionView = () => {
       const currentLog = logs.find(l => l.status === 'awaiting_approval');
       if (!currentLog) return;
       
-      const stepId = currentLog.stepId;
-      
-      await workflowService.submitAction(id, stepId, decision);
+      await workflowService.submitAction(id, currentLog.stepId, decision);
       fetchExecution();
     } catch (err) {
-      setError('Action failed: ' + err.message);
+      alert(`Action failed: ${err.message}`);
     } finally {
       setExecuting(false);
     }
   };
 
-  const getStatusIcon = (status) => {
-    switch(status?.toLowerCase()) {
-      case 'completed': return <CheckCircle size={20} color="#10b981" />;
-      case 'failed': return <XCircle size={20} color="#ef4444" />;
-      case 'awaiting_approval': return <Clock size={20} color="#f59e0b" />;
-      case 'in_progress': return <Activity className="spin" size={20} color="#3b82f6" />;
-      default: return <Clock size={20} color="var(--text-muted)" />;
-    }
-  };
-
-  if (loading) return <div className="container outfit">Loading Thread...</div>;
-  if (!execution) return <div className="container outfit">Execution not found.</div>;
+  if (loading) return <div className="execution-container outfit">Loading Thread context...</div>;
+  if (!execution) return <div className="execution-container outfit">Execution record not found.</div>;
 
   return (
-    <div className="container fade-in">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '40px' }}>
-        <button onClick={() => navigate('/audit')} className="action-btn" style={{ width: '44px', height: '44px' }}>
+    <div className="execution-container">
+      <header className="execution-header">
+        <button onClick={() => navigate('/audit')} className="back-button" aria-label="Go back">
           <ArrowLeft size={20} />
         </button>
         <div>
-          <h1 className="outfit" style={{ fontSize: '2.5rem', fontWeight: 800, letterSpacing: '-0.02em' }}>
-            Execution Trace
-          </h1>
-          <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-            ID: <code style={{ color: 'var(--primary)' }}>{id}</code>
+          <h1 className="execution-title">Execution Trace</h1>
+          <p className="execution-id">
+            Thread ID: <code>{id}</code>
           </p>
         </div>
         <div style={{ marginLeft: 'auto' }}>
@@ -88,104 +84,79 @@ const ExecutionView = () => {
             {execution.status}
           </div>
         </div>
-      </div>
+      </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 350px', gap: '32px' }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          {/* Execution Timeline */}
-          <section className="glass-card" style={{ padding: '32px' }}>
-            <h3 className="outfit" style={{ fontSize: '1.4rem', marginBottom: '32px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+      <div className="execution-layout">
+        <main style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <section className="timeline-section">
+            <h3 className="timeline-title">
               <Activity size={22} color="var(--primary)" /> Step Sequence
             </h3>
 
-            <div className="timeline">
+            <div className="timeline-list">
               {logs.map((log, idx) => (
-                <div key={idx} className="timeline-item" style={{ marginBottom: '32px', position: 'relative', paddingLeft: '40px' }}>
-                  <div className="timeline-line"></div>
-                  <div className="timeline-node" style={{ 
-                    position: 'absolute', 
-                    left: '0', 
-                    top: '0', 
-                    width: '32px', 
-                    height: '32px', 
-                    background: 'var(--glass-bright)', 
-                    borderRadius: '50%',
-                    border: '1px solid var(--glass-border)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 2
-                  }}>
-                    {getStatusIcon(log.status)}
+                <div key={idx} className="timeline-item">
+                  <div className="timeline-node">
+                    <StatusIcon status={log.status} />
                   </div>
                   
-                  <div className="glass-card" style={{ padding: '20px', background: 'var(--surface-item)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                      <h4 className="outfit" style={{ fontWeight: 700 }}>{log.stepName}</h4>
-                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{new Date(log.startedAt).toLocaleTimeString()}</span>
+                  <div className="step-card">
+                    <div className="step-header">
+                      <h4 className="step-name">{log.stepName}</h4>
+                      <span className="step-time">{new Date(log.startedAt).toLocaleTimeString()}</span>
                     </div>
-                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                      <span className="tiny-badge">{log.stepType}</span>
-                      {log.status === 'completed' && <span className="tiny-badge successful">Valid</span>}
+                    <div className="step-badges">
+                      <span className="type-badge">{log.stepType}</span>
+                      {log.status === 'completed' && <span className="type-badge status-valid">Valid</span>}
                     </div>
 
                     {log.status === 'awaiting_approval' && (
-                      <div style={{ marginTop: '20px', display: 'flex', gap: '12px' }}>
-                        <button onClick={() => handleAction('APPROVE')} className="glow-btn" style={{ flex: 1, height: '40px', background: 'var(--success)' }}>Approve</button>
-                        <button onClick={() => handleAction('REJECT')} className="glow-btn secondary" style={{ flex: 1, height: '40px', borderColor: 'var(--danger)', color: 'var(--danger)' }}>Reject</button>
+                      <div className="approval-actions">
+                        <button 
+                          disabled={executing}
+                          onClick={() => handleAction('APPROVE')} 
+                          className="glow-btn" 
+                          style={{ flex: 1, padding: '0.75rem', background: 'var(--success)', border: 'none', borderRadius: '8px', color: 'white', fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          Approve
+                        </button>
+                        <button 
+                          disabled={executing}
+                          onClick={() => handleAction('REJECT')} 
+                          className="glow-btn secondary" 
+                          style={{ flex: 1, padding: '0.75rem', background: 'transparent', border: '1px solid var(--danger)', borderRadius: '8px', color: 'var(--danger)', fontWeight: 600, cursor: 'pointer' }}
+                        >
+                          Reject
+                        </button>
                       </div>
                     )}
                   </div>
                 </div>
               ))}
+              
               {execution.status === 'IN_PROGRESS' && (
-                <div className="timeline-item pending" style={{ paddingLeft: '40px', opacity: 0.5 }}>
-                  <div className="timeline-node active" style={{ position: 'absolute', left: '0' }}><RefreshCw className="spin" size={20} color="var(--primary)" /></div>
-                  <p className="outfit" style={{ fontSize: '0.9rem' }}>Processing next strategy node...</p>
+                <div className="timeline-item" style={{ opacity: 0.6 }}>
+                  <div className="timeline-node">
+                    <RefreshCw className="spin-slow" size={18} color="var(--primary)" />
+                  </div>
+                  <p className="outfit" style={{ fontSize: '0.9rem', padding: '0.5rem 0 0 1rem' }}>
+                    Engine processing next logic node...
+                  </p>
                 </div>
               )}
             </div>
           </section>
-        </div>
+        </main>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-          <section className="glass-card" style={{ padding: '24px' }}>
-            <h4 className="outfit" style={{ marginBottom: '16px', fontSize: '1.1rem' }}>Context Data</h4>
-            <pre className="code-block" style={{ fontSize: '0.8rem', padding: '16px', borderRadius: '12px', overflow: 'auto' }}>
+        <aside style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <section className="context-section">
+            <h4 className="outfit" style={{ marginBottom: '1rem', fontSize: '1.1rem' }}>Runtime Context</h4>
+            <pre className="data-preview">
               {JSON.stringify(JSON.parse(execution.data || '{}'), null, 2)}
             </pre>
           </section>
-        </div>
+        </aside>
       </div>
-
-      <style dangerouslySetInnerHTML={{ __html: `
-        .timeline-line {
-          position: absolute;
-          left: 15px;
-          top: 32px;
-          bottom: -32px;
-          width: 2px;
-          background: var(--glass-border);
-          opacity: 0.3;
-        }
-        .timeline-item:last-child .timeline-line { display: none; }
-        .tiny-badge {
-          font-size: 0.7rem;
-          font-weight: 700;
-          padding: 2px 8px;
-          border-radius: 4px;
-          background: var(--glass-bright);
-          border: 1px solid var(--glass-border);
-          color: var(--text-muted);
-          text-transform: uppercase;
-        }
-        .tiny-badge.successful {
-          color: var(--success);
-          border-color: rgba(16, 185, 129, 0.2);
-        }
-        .spin { animation: spin 2s linear infinite; }
-        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      `}} />
     </div>
   );
 };

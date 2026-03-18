@@ -5,6 +5,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hallyx.workflowsystem.models.*;
 import com.hallyx.workflowsystem.repositories.*;
+import com.hallyx.workflowsystem.exceptions.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -15,6 +16,10 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.*;
 
+/**
+ * Service responsible for managing the lifecycle of workflow executions.
+ * It handles starting, processing steps, and maintaining execution logs.
+ */
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -26,10 +31,18 @@ public class ExecutionService {
     private final RuleEngineService ruleEngineService;
     private final ObjectMapper objectMapper;
 
+    /**
+     * Starts a new execution of a specified workflow.
+     * 
+     * @param workflowId The UUID of the workflow to execute.
+     * @param initialData The initial data payload for the execution.
+     * @param triggeredBy The ID of the user or system that triggered the execution.
+     * @return The starting state of the execution after the first step is processed.
+     */
     @Transactional
     public Execution startExecution(UUID workflowId, Map<String, Object> initialData, UUID triggeredBy) {
         Workflow workflow = workflowRepository.findById(workflowId)
-                .orElseThrow(() -> new RuntimeException("Workflow not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Workflow", workflowId.toString()));
 
         Execution execution = new Execution();
         execution.setWorkflow(workflow);
@@ -49,10 +62,16 @@ public class ExecutionService {
         return processStep(saved.getId());
     }
 
+    /**
+     * Advances the execution to the next logical step based on current data and rules.
+     * 
+     * @param executionId The ID of the execution to process.
+     * @return The updated execution state.
+     */
     @Transactional
     public Execution processStep(UUID executionId) {
         Execution execution = executionRepository.findById(executionId)
-                .orElseThrow(() -> new RuntimeException("Execution not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Execution", executionId.toString()));
 
         if (!"IN_PROGRESS".equals(execution.getStatus()) && !"AWAITING_APPROVAL".equals(execution.getStatus())) {
             return execution;
@@ -74,7 +93,7 @@ public class ExecutionService {
         Step currentStep = execution.getWorkflow().getSteps().stream()
                 .filter(s -> s.getId().equals(currentStepId))
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("Step not found: " + currentStepId));
+                .orElseThrow(() -> new ResourceNotFoundException("Step", currentStepId.toString()));
 
         // Create log entry
         ExecutionLog logEntry = new ExecutionLog();
@@ -156,7 +175,7 @@ public class ExecutionService {
     @Transactional
     public Execution submitAction(UUID id, UUID stepId, String decision, String approverId) {
         Execution execution = executionRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Execution not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Execution", id.toString()));
         
         try {
             Map<String, Object> data = objectMapper.readValue(execution.getData(), new TypeReference<Map<String, Object>>() {});
@@ -207,7 +226,7 @@ public class ExecutionService {
     @Transactional
     public Execution retryExecution(UUID id) {
         Execution execution = executionRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Execution not found"));
+                .orElseThrow(() -> new ResourceNotFoundException("Execution", id.toString()));
         execution.setStatus("IN_PROGRESS");
         execution.setIterationCount(0);
         return processStep(id);
